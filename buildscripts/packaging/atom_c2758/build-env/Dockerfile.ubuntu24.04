@@ -1,0 +1,9 @@
+# Build container for Bazel-era (8.x/9.x) and for the packaging step. The Bazel build itself uses
+# the hermetic mongo toolchain; the container only provides bazelisk prerequisites and dpkg tools.
+FROM ubuntu:24.04
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        build-essential python3 python3-pip python3-venv python3-git git curl ca-certificates \
+        libssl-dev libcurl4-openssl-dev liblzma-dev libgssapi-krb5-2 libsasl2-dev \
+        dpkg-dev apt-utils debhelper fakeroot binutils gawk lsb-release \
+    && rm -rf /var/lib/apt/lists/*

@@ -1,21 +1,23 @@
 #!/usr/bin/env bash
 # Build MongoDB for the Intel Atom C2758 and package it as .deb for
-# Ubuntu 24.04 (noble) and Ubuntu 26.04 (resolute).
+# Ubuntu 24.04 (ubuntu2404/noble) and Ubuntu 26.04 (ubuntu2604/resolute).
 #
-# Usage: build_deb.sh [-v VERSION] [-o OUTDIR] [-d ubuntu2404 -d ubuntu2604] [-s]
-#   -v  server version (default: MONGO_VERSION from .bazelrc.target_mongo_version)
+# Usage: build_deb.sh [-v VERSION] [-o OUTDIR] [-d build_os]... [-s]
+#   -v  server version (default: SERVER_VERSION from branch.env)
 #   -o  output dir; .deb files land in <out>/<build_os>/ (default: <repo>/atom-c2758-out)
 #   -d  build_os to package (repeatable; default: ubuntu2404 and ubuntu2604)
-#   -s  skip the bazel build, reuse bazel-bin/dist-stripped.tgz
-#
-# Extra bazel flags can be passed via BAZEL_FLAGS. Needs: bazel(isk), dpkg-dev,
-# debhelper, fakeroot, python3 with the repo's buildscripts requirements (GitPython).
+#   -s  skip the build, reuse the existing tarball
+# Env: JOBS (scons -j), BAZEL_EXTRA / SCONS_EXTRA (extra build flags).
+# Needs: dpkg-dev apt-utils debhelper fakeroot binutils gawk python3-git + the build deps
+# of the server version (see build-env/ for a ready-made container).
 set -euo pipefail
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo="$(cd "$here/../../.." && pwd)"
+# shellcheck source=branch.env
+source "$here/branch.env"
 
-version=""
+version="$SERVER_VERSION"
 outdir="$repo/atom-c2758-out"
 distros=()
 skip_build=0
@@ -28,40 +30,24 @@ while getopts "v:o:d:s" opt; do
     *) exit 2 ;;
     esac
 done
-if [[ -z "$version" ]]; then
-    version="$(sed -n 's/.*MONGO_VERSION=\(.*\)$/\1/p' "$repo/.bazelrc.target_mongo_version")"
-fi
-if [[ ${#distros[@]} -eq 0 ]]; then
-    distros=(ubuntu2404 ubuntu2604)
-fi
+[[ ${#distros[@]} -gt 0 ]] || distros=(ubuntu2404 ubuntu2604)
 
 cd "$repo"
-if [[ $skip_build -eq 0 ]]; then
-    # shellcheck disable=SC2086
-    bazel build --config=opt --config=atom_c2758 --define=MONGO_VERSION="$version" \
-        ${BAZEL_FLAGS:-} archive-dist-stripped
-fi
-
-tarball="$repo/bazel-bin/dist-stripped.tgz"
-[[ -f "$tarball" ]] || { echo "missing $tarball" >&2; exit 1; }
-
-# Verify the shipped binaries carry no AVX code.
-check_dir="$(mktemp -d)"
-trap 'rm -rf "$check_dir"' EXIT
-tar -xzf "$tarball" -C "$check_dir"
-"$here/check_no_avx.sh" "$check_dir"/mongodb-*/bin/mongod "$check_dir"/mongodb-*/bin/mongos
+tarball="$("$here/build_tarball.sh" $([[ $skip_build -eq 1 ]] && echo -s) -v "$version")"
+echo "tarball: $tarball"
 
 mkdir -p "$outdir"
 work="$(mktemp -d)"
-trap 'rm -rf "$check_dir" "$work"' EXIT
+trap 'rm -rf "$work"' EXIT
 for d in "${distros[@]}"; do
+    mkdir -p "$work/$d"
     (
         cd "$repo/buildscripts"
         python3 packager.py --prefix "$work/$d" --distros "$d" -a x86_64 \
             --tarball "$tarball" -s "$version" -m HEAD
     )
     mkdir -p "$outdir/$d"
-    find "$work/$d" -name '*.deb' -exec cp -v {} "$outdir/$d/" \;
+    find "$work/$d/dst" -name '*.deb' -exec cp -v {} "$outdir/$d/" \;
 done
 echo "Packages in $outdir"
 ls -lR "$outdir"
