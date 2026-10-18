@@ -48,7 +48,7 @@ PLATFORM_INCLUDES = select({
 PLATFORM_COPTS = select({
     config: [
         ("/FI" if os == "windows" else "-include") + "$(location platform/{}/{}/build/js-confdefs.h)".format(arch, os),
-    ] + (["-mavx2"] if arch == "x86_64" and os != "windows" else [])
+    ]
     for config, (arch, os) in PLATFORMS.items()
 } | {
     "//conditions:default": ["//conditions:incompatible"],
@@ -262,10 +262,6 @@ mongo_cc_library(
             "-Wno-error",
             "-Wno-return-type",
         ],
-    }) + select({
-        "//bazel/config:linux_x86_64": ["-mavx2"],
-        "//bazel/config:macos_x86_64": ["-mavx2"],
-        "//conditions:default": [],
     }) + select({
         # Suppress `register` keyword warnings in FreeBSD builds
         "@platforms//os:freebsd": [
