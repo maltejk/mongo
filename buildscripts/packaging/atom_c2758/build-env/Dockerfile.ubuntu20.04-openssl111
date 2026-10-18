@@ -1,0 +1,16 @@
+# Build container for 4.4 (no OpenSSL 3 support). OpenSSL 1.1.1 is built static
+# so the resulting binaries do not depend on libssl1.1, which Ubuntu 24.04/26.04 lack.
+FROM ubuntu:20.04
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        build-essential gcc-9 g++-9 python3 python3-dev python3-pip python3-venv python3-git \
+        libcurl4-openssl-dev liblzma-dev libsasl2-dev \
+        git curl ca-certificates pkg-config perl \
+        dpkg-dev apt-utils debhelper fakeroot binutils gawk lsb-release \
+    && rm -rf /var/lib/apt/lists/*
+RUN curl -fsSL https://www.openssl.org/source/openssl-1.1.1w.tar.gz -o /tmp/ossl.tgz \
+    && echo "cf3098950cb4d853ad95c0841f1f9c6d3dc102dccfcacd521d93925208b76ac8  /tmp/ossl.tgz" | sha256sum -c - \
+    && tar -xzf /tmp/ossl.tgz -C /tmp && cd /tmp/openssl-1.1.1w \
+    && ./config no-shared no-tests --prefix=/opt/openssl-1.1 --openssldir=/opt/openssl-1.1/ssl \
+    && make -j"$(nproc)" && make install_sw && rm -rf /tmp/openssl-1.1.1w /tmp/ossl.tgz
+ENV CC=gcc-9 CXX=g++-9
