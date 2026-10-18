@@ -1908,22 +1908,60 @@ def _impl(ctx):
         mtune_flags += ["-mcpu=power8", "-mtune=power8", "-mcmodel=medium"]
     if ctx.attr.is_s390x:
         mtune_flags += ["-march=z196", "-mtune=zEC12"]
-    if ctx.attr.is_x86_64:
-        mtune_flags += ["-march=sandybridge", "-mtune=generic", "-mprefer-vector-width=128"]
 
-    mtune_march_feature = feature(
-        name = "mtune_march",
-        enabled = True,
-        flag_sets = [
+    # The default x86_64 baseline (sandybridge) requires AVX. Enable the
+    # `x86_64_silvermont` feature (--features=x86_64_silvermont, or
+    # --config=atom_c2758) to target CPUs without AVX such as the Atom C2758
+    # (Silvermont/Avoton: SSE4.2, PCLMUL, no AVX).
+    x86_64_silvermont_feature = feature(
+        name = "x86_64_silvermont",
+        enabled = False,
+    )
+
+    mtune_march_flag_sets = [
+        flag_set(
+            actions = all_compile_actions,
+            flag_groups = [
+                flag_group(
+                    flags = mtune_flags,
+                ),
+            ],
+        ),
+    ] if len(mtune_flags) > 0 else []
+    if ctx.attr.is_x86_64:
+        mtune_march_flag_sets = [
             flag_set(
                 actions = all_compile_actions,
                 flag_groups = [
                     flag_group(
-                        flags = mtune_flags,
+                        flags = ["-march=sandybridge", "-mtune=generic", "-mprefer-vector-width=128"],
+                    ),
+                ],
+                with_features = [
+                    with_feature_set(
+                        not_features = ["x86_64_silvermont"],
                     ),
                 ],
             ),
-        ],
+            flag_set(
+                actions = all_compile_actions,
+                flag_groups = [
+                    flag_group(
+                        flags = ["-march=silvermont", "-mtune=silvermont", "-mprefer-vector-width=128"],
+                    ),
+                ],
+                with_features = [
+                    with_feature_set(
+                        features = ["x86_64_silvermont"],
+                    ),
+                ],
+            ),
+        ]
+
+    mtune_march_feature = feature(
+        name = "mtune_march",
+        enabled = True,
+        flag_sets = mtune_march_flag_sets,
     )
 
     compress_debug_disable_feature = feature(
@@ -2193,6 +2231,7 @@ def _impl(ctx):
         ubsan_feature,
         ubsan_third_party_feature,
         mtune_march_feature,
+        x86_64_silvermont_feature,
         compress_debug_disable_feature,
         rpath_override_feature,
         warnings_as_errors_link_feature,

@@ -13,12 +13,22 @@
 // support AVX2, as this should be quite a minority.
 #if defined(MOZILLA_MAY_SUPPORT_AVX2) && defined(__x86_64__)
 
+// MongoDB: this file is the only one that may use AVX2 instructions; it is
+// built without -mavx2 so that the rest of mozjs runs on CPUs without AVX
+// (e.g. Atom C2758). Callers gate on supports_avx2() at runtime.
 #  include <cstring>
 #  include <immintrin.h>
 #  include <stdint.h>
 #  include <type_traits>
 
 #  include "mozilla/EndianUtils.h"
+
+#  if defined(__clang__)
+#    pragma clang attribute push(__attribute__((target("avx2"))), apply_to = function)
+#  elif defined(__GNUC__)
+#    pragma GCC push_options
+#    pragma GCC target("avx2")
+#  endif
 
 namespace mozilla {
 
@@ -280,6 +290,12 @@ const uint64_t* SIMD::memchr64AVX2(const uint64_t* ptr, uint64_t value,
 }
 
 }  // namespace mozilla
+
+#  if defined(__clang__)
+#    pragma clang attribute pop
+#  elif defined(__GNUC__)
+#    pragma GCC pop_options
+#  endif
 
 #else
 
