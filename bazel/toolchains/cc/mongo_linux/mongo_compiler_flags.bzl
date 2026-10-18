@@ -272,8 +272,9 @@ MTUNE_MARCH_COPTS = select({
     # the 256 wide vector instructions because the heavy versions can cause
     # clock speed reductions.
     "//bazel/config:linux_x86_64": [
-        "-march=sandybridge",
-        "-mtune=generic",
+        # Atom C2758 (Silvermont): no AVX, so no sandybridge baseline.
+        "-march=silvermont",
+        "-mtune=silvermont",
         "-mprefer-vector-width=128",
     ],
     "//conditions:default": [],
