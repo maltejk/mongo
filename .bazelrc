@@ -539,6 +539,12 @@ common:native_toolchain --repo_env=BAZEL_DO_NOT_DETECT_CPP_TOOLCHAIN=0
 common:native_toolchain --linker=lld
 common:native_toolchain --config=local
 
+# Target Intel Atom C2758 (Silvermont/Avoton: SSE4.2, AES, PCLMUL, no AVX/AVX2).
+# The default x86_64 baseline is sandybridge, which requires AVX and dies with SIGILL on this CPU.
+# Example: bazel build --config=opt --config=atom_c2758 archive-dist-stripped
+# See buildscripts/packaging/atom_c2758/README.md.
+common:atom_c2758 --features=x86_64_silvermont
+
 # Only use fission and debug compression on Linux
 common:windows --fission=no
 common:windows --//bazel/config:create_dwp=False

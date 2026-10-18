@@ -376,3 +376,6 @@ target
 .claude/agent-memory-local/
 .claude/worktrees/
 CLAUDE.local.md
+
+# Atom C2758 package output
+/atom-c2758-out/
