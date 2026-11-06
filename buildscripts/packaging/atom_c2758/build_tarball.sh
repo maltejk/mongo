@@ -32,7 +32,7 @@ scons)
     tarball="$repo/mongodb-dist.tgz"
     if [[ $skip_build -eq 0 ]]; then
         python3 buildscripts/scons.py -j"${JOBS:-$(nproc)}" "${SCONS_FLAGS[@]}" \
-            MONGO_VERSION="$version" ${SCONS_EXTRA:-} archive-dist >&2
+            MONGO_VERSION="$version" PKGDIR=. --legacy-tarball=true ${SCONS_EXTRA:-} archive-dist >&2
     fi
     ;;
 *)

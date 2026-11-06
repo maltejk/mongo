@@ -7,4 +7,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         git curl ca-certificates pkg-config \
         dpkg-dev apt-utils debhelper fakeroot binutils gawk lsb-release \
     && rm -rf /var/lib/apt/lists/*
+COPY etc/pip /tmp/pip
+RUN python3 -m pip install -r /tmp/pip/compile-requirements.txt && rm -rf /tmp/pip
 ENV CC=gcc-11 CXX=g++-11

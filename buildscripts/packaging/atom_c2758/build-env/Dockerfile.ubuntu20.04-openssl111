@@ -13,4 +13,6 @@ RUN curl -fsSL https://www.openssl.org/source/openssl-1.1.1w.tar.gz -o /tmp/ossl
     && tar -xzf /tmp/ossl.tgz -C /tmp && cd /tmp/openssl-1.1.1w \
     && ./config no-shared no-tests --prefix=/opt/openssl-1.1 --openssldir=/opt/openssl-1.1/ssl \
     && make -j"$(nproc)" && make install_sw && rm -rf /tmp/openssl-1.1.1w /tmp/ossl.tgz
+COPY etc/pip /tmp/pip
+RUN python3 -m pip install -r /tmp/pip/compile-requirements.txt && rm -rf /tmp/pip
 ENV CC=gcc-9 CXX=g++-9
