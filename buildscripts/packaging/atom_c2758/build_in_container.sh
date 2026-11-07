@@ -12,7 +12,12 @@ source "$here/branch.env"
 script="${1:-build_deb.sh}"
 [[ $# -gt 0 ]] && shift
 image="atom-c2758-build:$BUILD_CONTAINER"
-docker build -t "$image" -f "$here/build-env/Dockerfile.$BUILD_CONTAINER" "$here/build-env"
-docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp -e JOBS="${JOBS:-}" \
+docker build -t "$image" -f "$here/build-env/Dockerfile.$BUILD_CONTAINER" "$repo"
+# Rootless podman remaps uids in a user namespace by default, which breaks the
+# bind-mounted repo's ownership for -u <host-uid>; --userns=keep-id keeps a 1:1
+# mapping. Real docker doesn't have (or need) this flag.
+userns_flag=()
+docker --version 2>/dev/null | grep -qi podman && userns_flag=(--userns=keep-id)
+docker run --rm -u "$(id -u):$(id -g)" "${userns_flag[@]}" -e HOME=/tmp -e JOBS="${JOBS:-}" \
     -v "$repo:/src" -w /src "$image" \
     "buildscripts/packaging/atom_c2758/$script" "$@"
